@@ -33,7 +33,7 @@ def transformer_block(inputs, num_heads, key_dim, ff_dim, dropout_rate):
     return LayerNormalization()(ff_layer)
 
 # --- Load dataset ---
-df = pd.read_excel("C:/Users/shans/OneDrive/Skrivebord/VejrAI/NewDatasetsmallENG.xlsx", engine="openpyxl", header=None)
+df = pd.read_excel("C:/Users/shans/OneDrive/Skrivebord/VejrAI/NewDatasetsmallENG.xlsx", engine="openpyxl", header=None) # issue. Since my pc uses the danish method for writing number. Using ',' not '.'. This caused great difficulties using a .csv file separated by both ',' and ';' for some reason.
 df = df.iloc[1:, :]
 dates = pd.to_datetime(df.iloc[:, 0])
 weather_data = df.iloc[:, 1:12].astype(float).values  # 11 klasser

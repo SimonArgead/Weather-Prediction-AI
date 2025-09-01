@@ -1,4 +1,5 @@
-#This version is a test of how the code performs without the features and data processing from the PostgreSQL database
+# This version is a test of how the code performs without the features and data processing from the PostgreSQL database
+# This is not the code where I have been working with PCA, RandomForest cross reference, and other things. That one will be uploaded at another time.
 import numpy as np
 import pandas as pd
 import pywt
@@ -31,7 +32,7 @@ def transformer_block(inputs, num_heads, key_dim, ff_dim, dropout_rate):
     ff_layer = Dense(inputs.shape[-1])(ff_layer)
     ff_layer = Add()([attention, ff_layer])
     return LayerNormalization()(ff_layer)
-
+# --- Code section 1 ---
 # --- Load dataset ---
 df = pd.read_excel("C:/Users/shans/OneDrive/Skrivebord/VejrAI/NewDatasetsmallENG.xlsx", engine="openpyxl", header=None) # issue. Since my pc uses the danish method for writing number. Using ',' not '.'. This caused great difficulties using a .csv file separated by both ',' and ';' for some reason.
 df = df.iloc[1:, :]
@@ -76,7 +77,7 @@ for idx in col_indices:
     fft_list.append(fft_feat)
     dwt_list.append(dwt_feat)
 
-# --- Synkroniser længde ---
+# --- Sync. length ---
 min_len = min(len(f) for f in fft_list + dwt_list)
 weather_data = weather_data[-min_len:]
 time_features = time_features[-min_len:]
@@ -85,18 +86,18 @@ dates = dates[-min_len:]
 fft_all = np.hstack([f[-min_len:] for f in fft_list])
 dwt_all = np.hstack([d[-min_len:] for d in dwt_list])
 
-# --- Kombiner alle input features ---
+# --- Combine all input features ---
 X_all = np.concatenate([weather_data, time_features, fft_all, dwt_all], axis=1)
 y_all = weather_data  # Targets: alle 11 klasser
 
-# --- Skaler input og output ---
+# --- Scale input, output using hybrid Standard-min-max scaling ---
 scaler_X = StandardScaler()
 X_scaled = scaler_X.fit_transform(X_all)
 
 scaler_y = MinMaxScaler()
 y_scaled = scaler_y.fit_transform(y_all)
 
-# --- Tidsbaseret split ---
+# --- Time based split ---
 train_size = int(len(X_scaled) * 0.7)
 valid_size = int(len(X_scaled) * 0.85)
 
@@ -104,7 +105,7 @@ X_train, y_train = X_scaled[:train_size], y_scaled[:train_size]
 X_valid, y_valid = X_scaled[train_size:valid_size], y_scaled[train_size:valid_size]
 X_test,  y_test  = X_scaled[valid_size:], y_scaled[valid_size:]
 
-# --- Sekvenser ---
+# --- Sequences ---
 timesteps = 48
 def create_sequences(X, y, t):
     X_seq = np.array([X[i:i+t] for i in range(len(X)-t)])
@@ -119,6 +120,7 @@ print(f"Træningssekvensers form: {X_train.shape}")
 print(f"(batchs, timesteps, features) = {X_train.shape}")
 
 #%%
+# --- Code section 2 ---
 # --- Model ---
 input_layer = Input(shape=(timesteps, X_train.shape[2]))
 projected = Dense(256, activation='relu')(input_layer)
@@ -138,12 +140,12 @@ output_layer = Dense(11)(x)
 model = Model(inputs=input_layer, outputs=output_layer)
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005), loss='mse', metrics=['mae'])
 
-# --- Træning ---
+# --- Training ---
 r2_logger = LambdaCallback(on_epoch_end=print_r2)
 
 model.fit(X_train, y_train,epochs=20, batch_size=32, validation_data=(X_valid, y_valid), callbacks=[r2_logger])
 
-# --- Evaluering ---
+# --- Evaluation ---
 loss, mae = model.evaluate(X_test, y_test)
 print(f"Test Loss: {loss:.4f}, MAE: {mae:.4f}")
 
@@ -156,7 +158,7 @@ print(f"R² Score (samlet): {r2:.4f}")
 print(f"MSE: {mse_val:.4f}")
 print(f"RMSE: {rmse:.4f}")
 
-# --- R² pr. klasse ---
+# --- R² for each class ---
 target_names = [
     "rain", "rain_minutes", "average_temperature", "maximum_temperature",
     "minimum_temperature", "average_windspeed", "maximum_windspeed",
@@ -168,6 +170,6 @@ for i, name in enumerate(target_names):
     r2_individual = r2_score(y_test[:, i], y_pred[:, i])
     print(f"{name:>25}: R² = {r2_individual:.4f}")
 
-# --- Gem model ---
+# --- Save model ---
 
 model.save("C:/Users/shans/OneDrive/Skrivebord/VejrAI/VejrAI_Transformer_with_freq.h5")
